@@ -492,7 +492,7 @@ async function save(form) {
       cityLower: normalize(v('city')),
       neighborhood: v('neighborhood'),
       bio: v('bio').slice(0, BIO_MAX),
-      photoURL: state.photo?.url && /^https:/.test(state.photo.url) ? state.photo.url : '',
+      photoURL: state.photo?.url && /^https?:/.test(state.photo.url) ? state.photo.url : '',
       bannerURL: state.banner?.url || '',
       portfolio: state.portfolio.map((p) => p.url),
       published: form.elements.published.checked,

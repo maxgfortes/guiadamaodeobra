@@ -24,8 +24,15 @@ service cloud.firestore {
       return v is string && v.size() >= min && v.size() <= max;
     }
 
+    // Image URLs must be https (Storage download URLs). Loopback http is
+    // accepted so the Storage emulator works in local development.
+    function isUrl(v) {
+      return v is string && v.size() <= 2048
+          && v.matches('^(https://|http://(localhost|127[.]0[.]0[.]1)[:/]).*');
+    }
+
     function isUrlOrEmpty(v) {
-      return v is string && (v.size() == 0 || (v.size() <= 2048 && v.matches('^https://.*')));
+      return v is string && (v.size() == 0 || isUrl(v));
     }
 
     function validProfessional(d) {
@@ -47,7 +54,8 @@ service cloud.firestore {
           && (!('bio' in d) || isStr(d.bio, 0, 600))
           && (!('photoURL' in d) || isUrlOrEmpty(d.photoURL))
           && (!('bannerURL' in d) || isUrlOrEmpty(d.bannerURL))
-          && (!('portfolio' in d) || (d.portfolio is list && d.portfolio.size() <= 12))
+          && (!('portfolio' in d) || (d.portfolio is list && d.portfolio.size() <= 12
+              && (d.portfolio.size() == 0 || isUrl(d.portfolio[0]))))
           && d.published is bool
           && d.updatedAt == request.time;
     }
