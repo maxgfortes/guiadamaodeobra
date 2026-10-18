@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Guia Mão de Obra — Profissionais perto de você</title>
+  <meta name="description" content="Encontre eletricistas, encanadores, diaristas, pintores e centenas de outros profissionais locais. Fale direto pelo WhatsApp.">
+  <meta name="theme-color" content="#f9f9f9" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#161618" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Mão de Obra">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <!-- Top bar: logo only -->
+  <header class="navbar" role="banner">
+    <a class="logo" href="#/" aria-label="Guia Mão de Obra — início">
+      <span class="logo__mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9l-3.8 3.8z"/></svg>
+      </span>
+      <span>Mão de <span class="logo__accent">Obra</span></span>
+    </a>
+  </header>
+
+  <!-- Routed content -->
+  <main id="app" class="app" tabindex="-1">
+    <div class="center-spinner"><div class="spinner"></div></div>
+  </main>
+
+  <!-- Bottom tab bar -->
+  <nav class="tabbar" aria-label="Navegação principal">
+    <div class="tabbar__inner" id="tabbar"></div>
+  </nav>
+
+  <noscript><p style="padding:80px 20px;text-align:center">Ative o JavaScript para usar o Guia Mão de Obra.</p></noscript>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
