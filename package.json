@@ -5,7 +5,7 @@
   "description": "Mobile-first marketplace to find local labor and services. Vanilla JS + Firebase.",
   "scripts": {
     "dev": "npx --yes http-server public -p 5173 -c-1",
-    "emulators": "npx --yes firebase-tools emulators:start",
+    "emulators": "npx --yes firebase-tools emulators:start --project demo-guia",
     "deploy": "npx --yes firebase-tools deploy",
     "deploy:hosting": "npx --yes firebase-tools deploy --only hosting",
     "deploy:rules": "npx --yes firebase-tools deploy --only firestore:rules,firestore:indexes,storage"
