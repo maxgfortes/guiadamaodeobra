@@ -1,0 +1,35 @@
+rules_version = '2';
+
+// Guia Mão de Obra — Cloud Storage security rules
+//
+// Layout
+//   professionals/{uid}/avatar.jpg
+//   professionals/{uid}/banner.jpg
+//   professionals/{uid}/portfolio/{photoId}.jpg
+//
+// * Images are public (they are shown on public profiles).
+// * Only the owner can write inside their own folder.
+// * Only images up to 5 MB (the client compresses before upload).
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    function isImage() {
+      return request.resource.contentType.matches('image/.*')
+          && request.resource.size < 5 * 1024 * 1024;
+    }
+
+    match /professionals/{uid}/{allPaths=**} {
+      allow read: if true;
+      allow create, update: if isOwner(uid) && isImage();
+      allow delete: if isOwner(uid);
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

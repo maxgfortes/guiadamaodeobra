@@ -1,0 +1,78 @@
+rules_version = '2';
+
+// Guia Mão de Obra — Firestore security rules
+//
+// Data model
+//   professionals/{uid}   Public profile of a professional. Document id == Firebase Auth uid.
+//
+// Principles
+//   * Anyone (no account) can read published profiles.
+//   * A professional can only create / update / delete their own document.
+//   * Every write is schema-validated (types, sizes, allowed keys).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isStr(v, min, max) {
+      return v is string && v.size() >= min && v.size() <= max;
+    }
+
+    function isUrlOrEmpty(v) {
+      return v is string && (v.size() == 0 || (v.size() <= 2048 && v.matches('^https://.*')));
+    }
+
+    function validProfessional(d) {
+      return d.keys().hasOnly([
+               'name', 'nameLower', 'whatsapp', 'email', 'phone',
+               'specs', 'categories', 'city', 'cityLower', 'neighborhood',
+               'bio', 'photoURL', 'bannerURL', 'portfolio',
+               'published', 'createdAt', 'updatedAt'
+             ])
+          && d.keys().hasAll(['name', 'whatsapp', 'email', 'specs', 'city', 'neighborhood', 'published'])
+          && isStr(d.name, 2, 80)
+          && isStr(d.whatsapp, 10, 20)
+          && isStr(d.email, 5, 120)
+          && (!('phone' in d) || isStr(d.phone, 0, 20))
+          && d.specs is list && d.specs.size() >= 1 && d.specs.size() <= 12
+          && (!('categories' in d) || (d.categories is list && d.categories.size() <= 12))
+          && isStr(d.city, 2, 60)
+          && isStr(d.neighborhood, 2, 60)
+          && (!('bio' in d) || isStr(d.bio, 0, 600))
+          && (!('photoURL' in d) || isUrlOrEmpty(d.photoURL))
+          && (!('bannerURL' in d) || isUrlOrEmpty(d.bannerURL))
+          && (!('portfolio' in d) || (d.portfolio is list && d.portfolio.size() <= 12))
+          && d.published is bool
+          && d.updatedAt == request.time;
+    }
+
+    match /professionals/{uid} {
+      // Public directory: published profiles are readable by anyone.
+      // Owners can always read their own (even when hidden).
+      allow get: if resource.data.published == true || isOwner(uid);
+      allow list: if resource.data.published == true;
+
+      allow create: if isOwner(uid)
+                    && validProfessional(request.resource.data)
+                    && request.resource.data.createdAt == request.time;
+
+      allow update: if isOwner(uid)
+                    && validProfessional(request.resource.data)
+                    // createdAt is immutable once set
+                    && request.resource.data.createdAt == resource.data.createdAt;
+
+      allow delete: if isOwner(uid);
+    }
+
+    // Deny everything else by default.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
