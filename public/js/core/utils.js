@@ -99,6 +99,10 @@ export function avatarHTML(pro, cls = '') {
   if (pro?.photoURL) {
     return `<div class="avatar ${cls}" ${style}><img src="${esc(pro.photoURL)}" alt="" loading="lazy" decoding="async"></div>`;
   }
+  if (!String(pro?.name || '').trim()) {
+    // Generic person silhouette when there is no name yet (signup form).
+    return `<div class="avatar ${cls}" aria-hidden="true"><svg viewBox="0 0 24 24" width="62%" height="62%" fill="currentColor"><circle cx="12" cy="8.5" r="4.2"/><path d="M4 20.5c.9-4 4.1-6.3 8-6.3s7.1 2.3 8 6.3z"/></svg></div>`;
+  }
   return `<div class="avatar ${cls}" ${style} aria-hidden="true">${esc(initials(pro?.name))}</div>`;
 }
 
