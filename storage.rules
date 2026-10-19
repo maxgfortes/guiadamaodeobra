@@ -6,6 +6,7 @@ rules_version = '2';
 //   professionals/{uid}/avatar.jpg
 //   professionals/{uid}/banner.jpg
 //   professionals/{uid}/portfolio/{photoId}.jpg
+//   banners/{bannerId}.jpg            (admins only)
 //
 // * Images are public (they are shown on public profiles).
 // * Only the owner can write inside their own folder.
@@ -26,6 +27,13 @@ service firebase.storage {
       allow read: if true;
       allow create, update: if isOwner(uid) && isImage();
       allow delete: if isOwner(uid);
+    }
+
+    // Home carousel images, managed by admins.
+    match /banners/{file} {
+      allow read: if true;
+      allow create, update: if request.auth != null && request.auth.token.admin == true && isImage();
+      allow delete: if request.auth != null && request.auth.token.admin == true;
     }
 
     match /{allPaths=**} {

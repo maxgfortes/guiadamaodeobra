@@ -2,23 +2,23 @@ rules_version = '2';
 
 // Guia Mão de Obra — Firestore security rules
 //
-// Data model
-//   professionals/{uid}   Public profile of a professional. Document id == Firebase Auth uid.
+// Collections
+//   professionals/{uid}   Professional profile. Doc id == Firebase Auth uid.
+//                         `active` + `subscription` are SERVER-ONLY (Cloud Functions).
+//   payments/{paymentId}  Mercado Pago payments (written only by Cloud Functions).
+//   banners/{bannerId}    Home carousel, managed by admins.
 //
 // Principles
-//   * Anyone (no account) can read published profiles.
-//   * A professional can only create / update / delete their own document.
-//   * Every write is schema-validated (types, sizes, allowed keys).
+//   * Visitors (no account) read profiles that are published AND paid (active).
+//   * A professional only writes their own profile, never billing fields.
+//   * Admins (custom claim `admin`) can read everything and manage banners;
+//     privileged changes (activation, deletion) go through callable functions.
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function signedIn() {
-      return request.auth != null;
-    }
-
-    function isOwner(uid) {
-      return signedIn() && request.auth.uid == uid;
-    }
+    function signedIn() { return request.auth != null; }
+    function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
+    function isAdmin() { return signedIn() && request.auth.token.admin == true; }
 
     function isStr(v, min, max) {
       return v is string && v.size() >= min && v.size() <= max;
@@ -35,12 +35,17 @@ service cloud.firestore {
       return v is string && (v.size() == 0 || isUrl(v));
     }
 
+    /* ---------- professionals ---------- */
+
+    // Fields a professional may write. Server-only fields are allowed to be
+    // PRESENT (merge writes carry them along) but never changed by the client.
     function validProfessional(d) {
       return d.keys().hasOnly([
                'name', 'nameLower', 'whatsapp', 'email', 'phone',
                'specs', 'categories', 'city', 'cityLower', 'neighborhood',
                'bio', 'photoURL', 'bannerURL', 'portfolio',
-               'published', 'createdAt', 'updatedAt'
+               'published', 'createdAt', 'updatedAt',
+               'active', 'subscription'
              ])
           && d.keys().hasAll(['name', 'whatsapp', 'email', 'specs', 'city', 'neighborhood', 'published'])
           && isStr(d.name, 2, 80)
@@ -60,22 +65,53 @@ service cloud.firestore {
           && d.updatedAt == request.time;
     }
 
+    function isListed(d) {
+      return d.published == true && d.active == true;
+    }
+
     match /professionals/{uid} {
-      // Public directory: published profiles are readable by anyone.
-      // Owners can always read their own (even when hidden).
-      allow get: if resource.data.published == true || isOwner(uid);
-      allow list: if resource.data.published == true;
+      allow get: if isListed(resource.data) || isOwner(uid) || isAdmin();
+      // Public queries must filter published == true AND active == true.
+      allow list: if isListed(resource.data) || isAdmin();
 
       allow create: if isOwner(uid)
                     && validProfessional(request.resource.data)
+                    && !('active' in request.resource.data)
+                    && !('subscription' in request.resource.data)
                     && request.resource.data.createdAt == request.time;
 
       allow update: if isOwner(uid)
                     && validProfessional(request.resource.data)
-                    // createdAt is immutable once set
-                    && request.resource.data.createdAt == resource.data.createdAt;
+                    && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['active', 'subscription', 'createdAt']);
 
       allow delete: if isOwner(uid);
+    }
+
+    /* ---------- payments (server-written) ---------- */
+
+    match /payments/{paymentId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow write: if false;
+    }
+
+    /* ---------- banners (home carousel) ---------- */
+
+    function validBanner(d) {
+      return d.keys().hasOnly(['title', 'subtitle', 'cta', 'link', 'color', 'imageURL', 'active', 'order', 'updatedAt'])
+          && isStr(d.title, 0, 80)
+          && (!('subtitle' in d) || isStr(d.subtitle, 0, 140))
+          && (!('cta' in d) || isStr(d.cta, 0, 30))
+          && (!('link' in d) || isStr(d.link, 0, 500))
+          && (!('color' in d) || isStr(d.color, 0, 20))
+          && (!('imageURL' in d) || isUrlOrEmpty(d.imageURL))
+          && d.active is bool
+          && d.order is number;
+    }
+
+    match /banners/{bannerId} {
+      allow read: if true;
+      allow create, update: if isAdmin() && validBanner(request.resource.data);
+      allow delete: if isAdmin();
     }
 
     // Deny everything else by default.

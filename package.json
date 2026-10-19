@@ -1,6 +1,6 @@
 {
   "name": "guia-mao-de-obra",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Mobile-first marketplace to find local labor and services. Vanilla JS + Firebase.",
   "scripts": {
@@ -8,7 +8,8 @@
     "emulators": "npx --yes firebase-tools emulators:start --project demo-guia",
     "deploy": "npx --yes firebase-tools deploy",
     "deploy:hosting": "npx --yes firebase-tools deploy --only hosting",
-    "deploy:rules": "npx --yes firebase-tools deploy --only firestore:rules,firestore:indexes,storage"
+    "deploy:rules": "npx --yes firebase-tools deploy --only firestore:rules,firestore:indexes,storage",
+    "deploy:functions": "npx --yes firebase-tools deploy --only functions"
   },
   "license": "MIT"
 }
