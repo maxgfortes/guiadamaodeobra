@@ -52,22 +52,33 @@ function demoFor(predicate = () => true) {
   return useDemo ? DEMO_PROFESSIONALS.filter(predicate) : [];
 }
 
+/**
+ * Run a Firestore list query. While demo profiles are enabled, a failing
+ * query (Firestore not created yet, index still building, offline) degrades
+ * to demo-only results instead of breaking the screen.
+ */
+async function queryOrDemo(buildQuery) {
+  const fb = await getFirebase();
+  if (!fb) return [];
+  try {
+    return (await fb.fs.getDocs(buildQuery(fb))).docs.map(fromDoc);
+  } catch (err) {
+    if (!useDemo) throw err;
+    console.warn('Firestore query failed; showing demo data only.', err);
+    return [];
+  }
+}
+
 /** Professionals offering a given niche, newest first. */
 export function listBySpec(specId) {
   return cached(`spec:${specId}`, async () => {
-    const fb = await getFirebase();
-    let real = [];
-    if (fb) {
-      const { db, fs } = fb;
-      const q = fs.query(
-        fs.collection(db, 'professionals'),
-        fs.where('published', '==', true),
-        fs.where('specs', 'array-contains', specId),
-        fs.orderBy('updatedAt', 'desc'),
-        fs.limit(100),
-      );
-      real = (await fs.getDocs(q)).docs.map(fromDoc);
-    }
+    const real = await queryOrDemo(({ db, fs }) => fs.query(
+      fs.collection(db, 'professionals'),
+      fs.where('published', '==', true),
+      fs.where('specs', 'array-contains', specId),
+      fs.orderBy('updatedAt', 'desc'),
+      fs.limit(100),
+    ));
     return [...real, ...demoFor((p) => p.specs.includes(specId))].sort(byRecent);
   });
 }
@@ -75,18 +86,12 @@ export function listBySpec(specId) {
 /** Most recently updated profiles (home carousel + search corpus). */
 export function listRecent(max = 60) {
   return cached(`recent:${max}`, async () => {
-    const fb = await getFirebase();
-    let real = [];
-    if (fb) {
-      const { db, fs } = fb;
-      const q = fs.query(
-        fs.collection(db, 'professionals'),
-        fs.where('published', '==', true),
-        fs.orderBy('updatedAt', 'desc'),
-        fs.limit(max),
-      );
-      real = (await fs.getDocs(q)).docs.map(fromDoc);
-    }
+    const real = await queryOrDemo(({ db, fs }) => fs.query(
+      fs.collection(db, 'professionals'),
+      fs.where('published', '==', true),
+      fs.orderBy('updatedAt', 'desc'),
+      fs.limit(max),
+    ));
     return [...real, ...demoFor()].sort(byRecent).slice(0, max);
   });
 }

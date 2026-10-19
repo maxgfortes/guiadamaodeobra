@@ -97,7 +97,7 @@ While `js/firebase-config.js` still has its placeholder values, the app runs in 
 6. **Authentication → Settings → Authorized domains**: add your custom domain if you use one. `*.web.app` and `localhost` are already allowed.
 
 ```bash
-cp .firebaserc.example .firebaserc   # set your project id
+# .firebaserc already points to the "guiadamaodeobra" project
 npx firebase-tools login
 npm run deploy:rules                 # Firestore rules + indexes, Storage rules
 npm run deploy:hosting               # publish /public

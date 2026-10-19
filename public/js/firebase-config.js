@@ -1,21 +1,22 @@
 /**
  * Firebase web configuration.
  *
- * Replace the placeholder values with your project's config
+ * Project: guiadamaodeobra
  * (Firebase console → Project settings → Your apps → Web app).
  * These values are NOT secrets: access is enforced by the security rules
  * in /firestore.rules and /storage.rules.
  *
- * While the placeholders are in place the app runs in DEMO MODE:
- * browsing uses bundled sample professionals and signup is disabled.
+ * If the values are replaced by 'YOUR_…' placeholders the app runs in
+ * DEMO MODE: browsing uses bundled sample professionals, signup is disabled.
  */
 export const firebaseConfig = {
-  apiKey: 'YOUR_API_KEY',
-  authDomain: 'YOUR_PROJECT_ID.firebaseapp.com',
-  projectId: 'YOUR_PROJECT_ID',
-  storageBucket: 'YOUR_PROJECT_ID.appspot.com',
-  messagingSenderId: 'YOUR_SENDER_ID',
-  appId: 'YOUR_APP_ID',
+  apiKey: 'AIzaSyDYSd0ZoBVtXuw5bR_Ps6LkGZa3qGhInCk',
+  authDomain: 'guiadamaodeobra.firebaseapp.com',
+  projectId: 'guiadamaodeobra',
+  storageBucket: 'guiadamaodeobra.firebasestorage.app',
+  messagingSenderId: '735810487374',
+  appId: '1:735810487374:web:f66b1ec7028346157daf1f',
+  measurementId: 'G-XZ69F491PJ',
 };
 
 /** App-level switches. */
