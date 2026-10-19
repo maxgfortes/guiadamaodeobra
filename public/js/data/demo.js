@@ -24,6 +24,7 @@ const P = (id, name, specs, city, neighborhood, whatsapp, bio, extra = {}) => ({
   portfolio: [],
   portfolioCount: 6,
   published: true,
+  active: true,
   demo: true,
   updatedAt: Date.now() - extra.ageDays * 864e5,
   ...extra,

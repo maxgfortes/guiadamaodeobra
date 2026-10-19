@@ -47,4 +47,31 @@ export function getFirebase() {
   return instancePromise;
 }
 
+let functionsPromise = null;
+
+/** Cloud Functions client, loaded only by screens that call functions. */
+function getFunctionsClient() {
+  if (!functionsPromise) {
+    functionsPromise = (async () => {
+      const fb = await getFirebase();
+      if (!fb) throw new Error('firebase-not-configured');
+      const fn = await import(`${CDN}/firebase-functions.js`);
+      const functions = fn.getFunctions(fb.app, appConfig.functionsRegion);
+      if (useEmulators) fn.connectFunctionsEmulator(functions, location.hostname, 5001);
+      return { functions, fn };
+    })().catch((err) => { functionsPromise = null; throw err; });
+  }
+  return functionsPromise;
+}
+
+/**
+ * Call an HTTPS callable function: `await callFunction('createPayment', {...})`.
+ * Returns the function's `data`; throws FirebaseError with `.code`/`.message`.
+ */
+export async function callFunction(name, payload) {
+  const { functions, fn } = await getFunctionsClient();
+  const res = await fn.httpsCallable(functions, name, { timeout: 70_000 })(payload);
+  return res.data;
+}
+
 export { isFirebaseConfigured };

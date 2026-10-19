@@ -19,7 +19,8 @@ function host() {
   return el;
 }
 
-export function toast(message, type = 'info', duration = 2600) {
+/** @param {() => void} [onTap] optional action when the toast is tapped */
+export function toast(message, type = 'info', duration = 2600, onTap) {
   const el = document.createElement('div');
   el.className = `toast toast--${type}`;
   el.innerHTML = `${icon(ICONS[type] || 'info')}<span>${esc(message)}</span>`;
@@ -29,5 +30,6 @@ export function toast(message, type = 'info', duration = 2600) {
     el.addEventListener('animationend', () => el.remove(), { once: true });
   };
   setTimeout(remove, duration);
-  el.addEventListener('click', remove);
+  if (onTap) el.classList.add('toast--action');
+  el.addEventListener('click', () => { onTap?.(); remove(); });
 }

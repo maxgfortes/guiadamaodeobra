@@ -11,7 +11,10 @@
  *   categories: string[]     denormalized base category ids
  *   city, cityLower, neighborhood, bio,
  *   photoURL, bannerURL, portfolio: string[],
- *   published: bool, createdAt, updatedAt (server timestamps)
+ *   published: bool          the professional's own visibility switch
+ *   active: bool             server-only: paid subscription in force
+ *   subscription: {...}      server-only: status, planId, expiresAt
+ *   createdAt, updatedAt     server timestamps
  */
 import { getFirebase, isFirebaseConfigured } from './firebase.js';
 import { appConfig } from '../firebase-config.js';
@@ -75,6 +78,7 @@ export function listBySpec(specId) {
     const real = await queryOrDemo(({ db, fs }) => fs.query(
       fs.collection(db, 'professionals'),
       fs.where('published', '==', true),
+      fs.where('active', '==', true),
       fs.where('specs', 'array-contains', specId),
       fs.orderBy('updatedAt', 'desc'),
       fs.limit(100),
@@ -89,6 +93,7 @@ export function listRecent(max = 60) {
     const real = await queryOrDemo(({ db, fs }) => fs.query(
       fs.collection(db, 'professionals'),
       fs.where('published', '==', true),
+      fs.where('active', '==', true),
       fs.orderBy('updatedAt', 'desc'),
       fs.limit(max),
     ));

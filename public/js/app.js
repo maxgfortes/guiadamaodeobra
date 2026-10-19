@@ -6,6 +6,8 @@ import { route, startRouter, back, currentPath } from './core/router.js';
 import { icon } from './ui/icons.js';
 import { toast } from './ui/toast.js';
 import { haptic } from './core/utils.js';
+import { initPWA } from './core/pwa.js';
+import { animateIn, swapView, initImageFades } from './ui/motion.js';
 
 import { homeView } from './views/home.js';
 import { exploreView, categoryView, groupView } from './views/explore.js';
@@ -14,6 +16,9 @@ import { profileView } from './views/profile.js';
 import { searchView } from './views/search.js';
 import { meView } from './views/me.js';
 import { notFoundView } from './views/notfound.js';
+
+initPWA();
+initImageFades();
 
 /* ---------- Routes ---------- */
 route('/', homeView, { tab: 'home', title: 'Início' });
@@ -72,7 +77,7 @@ startRouter(async ({ found, path, transition, isStale }) => {
   document.title = found?.meta.title ? `${found.meta.title} · Guia Mão de Obra` : 'Guia Mão de Obra';
 
   const view = document.createElement('div');
-  view.className = `view is-${transition}`;
+  view.className = 'view';
   try {
     if (cleanup) { cleanup(); cleanup = null; }
     const result = await found.view(found.params, { root: view, isStale });
@@ -86,9 +91,12 @@ startRouter(async ({ found, path, transition, isStale }) => {
     toast('Não foi possível carregar.', 'error');
   }
 
-  root.replaceChildren(view);
-  root.dataset.path = path;
-  window.scrollTo(0, transition === 'back' ? scrollMemory.get(path) || 0 : 0);
+  // Push / pop / tab transition (View Transitions API with CSS fallback).
+  await swapView(root, view, transition, () => {
+    root.dataset.path = path;
+    window.scrollTo(0, transition === 'back' ? scrollMemory.get(path) || 0 : 0);
+  });
+  animateIn(view);
 });
 
 /* ---------- Global interactions ---------- */

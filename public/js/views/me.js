@@ -9,6 +9,8 @@ import { currentUser, getMyProfile, signOut } from '../services/auth.js';
 import { isFirebaseConfigured } from '../services/firebase.js';
 import { primarySpecialty } from '../services/professionals.js';
 import { esc, avatarHTML } from '../core/utils.js';
+import { canInstall, promptInstall, isIOS } from '../core/pwa.js';
+import { openSheet } from '../ui/sheet.js';
 
 const BENEFITS = [
   ['sparkles', '#ff9500', 'Perfil profissional grátis', 'Foto, capa, descrição e portfólio.'],
@@ -29,8 +31,29 @@ export async function meView(_params, { root, isStale }) {
   }
   if (isStale()) return;
 
-  if (!user) return renderGuest(root);
-  return renderMember(root, user, profile);
+  if (!user) renderGuest(root);
+  else renderMember(root, user, profile);
+  appendInstallRow(root);
+}
+
+const fmtShort = (d) => d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+
+/** Plan status + pay/renew shortcut. */
+function subscriptionRows(profile) {
+  const exp = profile.subscription?.expiresAt?.toDate?.();
+  const status = profile.active
+    ? { color: '#34c759', label: 'Plano ativo', detail: exp ? `até ${fmtShort(exp)}` : 'Ativo' }
+    : profile.subscription?.status === 'expired'
+      ? { color: '#ff9500', label: 'Plano expirado', detail: 'Fora das buscas' }
+      : { color: '#ff3b30', label: 'Pagamento pendente', detail: 'Fora das buscas' };
+  const hidden = profile.active && !profile.published
+    ? `<li><div class="row"><span class="icon-tile" style="--tile:#8e8e93">${icon('eye')}</span><div class="row__body"><div class="row__title">Visibilidade</div></div><span class="row__detail">Oculto por você</span></div></li>` : '';
+  return `
+    <li><div class="row"><span class="icon-tile" style="--tile:${status.color}">${icon(profile.active ? 'check' : 'close')}</span>
+      <div class="row__body"><div class="row__title">${status.label}</div></div><span class="row__detail">${esc(status.detail)}</span></div></li>
+    ${hidden}
+    <li><a class="row" href="signup.html#plano"><span class="icon-tile" style="--tile:#5856d6">${icon('sparkles')}</span>
+      <div class="row__body"><div class="row__title">${profile.active ? 'Renovar plano' : 'Escolher plano e pagar'}</div></div>${chevron}</a></li>`;
 }
 
 function renderGuest(root) {
@@ -78,7 +101,7 @@ function renderMember(root, user, profile) {
         <ul class="list list--icons">
           <li><a class="row" href="#/p/${esc(user.uid)}"><span class="icon-tile" style="--tile:#007aff">${icon('eye')}</span><div class="row__body"><div class="row__title">Ver perfil público</div></div>${chevron}</a></li>
           <li><a class="row" href="signup.html"><span class="icon-tile" style="--tile:#ff9500">${icon('edit')}</span><div class="row__body"><div class="row__title">Editar perfil</div></div>${chevron}</a></li>
-          <li><div class="row"><span class="icon-tile" style="--tile:${profile.published ? '#34c759' : '#8e8e93'}">${icon('checkCircle')}</span><div class="row__body"><div class="row__title">Status</div></div><span class="row__detail">${profile.published ? 'Visível' : 'Oculto'}</span></div></li>
+          ${subscriptionRows(profile)}
         </ul>
       </div>` : `
       <div class="group">
@@ -99,6 +122,32 @@ function renderMember(root, user, profile) {
     } catch {
       toast('Não foi possível sair', 'error');
       e.currentTarget.disabled = false;
+    }
+  });
+}
+
+/** "Install app" row (Android prompt / iOS Add-to-Home-Screen instructions). */
+function appendInstallRow(root) {
+  if (!canInstall()) return;
+  const group = document.createElement('div');
+  group.className = 'group';
+  group.innerHTML = `
+    <ul class="list list--icons"><li><button class="row" id="install">
+      <span class="icon-tile" style="--tile:#007aff">${icon('plus')}</span>
+      <div class="row__body"><div class="row__title">Instalar o app</div><div class="row__subtitle">Acesso rápido pela tela inicial, em tela cheia.</div></div>${chevron}
+    </button></li></ul>`;
+  root.appendChild(group);
+  group.querySelector('#install').addEventListener('click', async () => {
+    const outcome = await promptInstall();
+    if (outcome === 'accepted') group.remove();
+    if (outcome === 'ios' || (outcome === 'unavailable' && isIOS())) {
+      const sheet = openSheet({ title: 'Instalar no iPhone', leftLabel: '', rightLabel: 'OK' });
+      sheet.body.innerHTML = `
+        <div class="group"><ul class="list list--icons">
+          <li><div class="row"><span class="icon-tile" style="--tile:#007aff">${icon('share')}</span><div class="row__body"><div class="row__title">1. Toque em Compartilhar</div><div class="row__subtitle">Na barra do Safari</div></div></div></li>
+          <li><div class="row"><span class="icon-tile" style="--tile:#8e8e93">${icon('plus')}</span><div class="row__body"><div class="row__title">2. “Adicionar à Tela de Início”</div></div></div></li>
+          <li><div class="row"><span class="icon-tile" style="--tile:#34c759">${icon('check')}</span><div class="row__body"><div class="row__title">3. Toque em Adicionar</div></div></div></li>
+        </ul></div>`;
     }
   });
 }

@@ -8,6 +8,7 @@ import { pageHead, proRow, navRow, iconTile, emptyState } from '../ui/components
 import { icon } from '../ui/icons.js';
 import { esc, normalize, debounce } from '../core/utils.js';
 import { currentQuery } from '../core/router.js';
+import { animateIn } from '../ui/motion.js';
 
 const SUGGESTIONS = ['Eletricista', 'Diarista', 'Encanador', 'Pintor', 'Ar-condicionado', 'Montador de móveis'];
 
@@ -71,6 +72,7 @@ export function searchView(_params, { root, isStale }) {
       out.innerHTML = specHTML || prosHTML
         ? specHTML + prosHTML
         : emptyState({ title: 'Nenhum resultado', text: `Não encontramos nada para “${term}”. Tente outro termo ou explore as categorias.` });
+      animateIn(out);
     } catch (err) {
       console.error(err);
       if (mySeq === seq) out.innerHTML = specHTML + emptyState({ iconName: 'alertCircle', title: 'Falha na busca', text: 'Verifique sua conexão.' });

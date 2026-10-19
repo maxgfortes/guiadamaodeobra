@@ -1,5 +1,5 @@
 /**
- * Home: hero + search shortcut, category grid, popular niches,
+ * Home: server-driven banner carousel, hero + search shortcut, category grid, popular niches,
  * newest professionals and a call-to-action for professionals.
  */
 import { CATEGORIES, POPULAR_SPECS, getSpec } from '../data/categories.js';
@@ -7,6 +7,9 @@ import { listRecent } from '../services/professionals.js';
 import { iconTile, proMini, demoNote } from '../ui/components.js';
 import { icon } from '../ui/icons.js';
 import { esc } from '../core/utils.js';
+import { listBanners } from '../services/banners.js';
+import { bannerCarousel } from '../ui/carousel.js';
+import { animateIn } from '../ui/motion.js';
 
 function greeting() {
   const h = new Date().getHours();
@@ -17,6 +20,8 @@ function greeting() {
 
 export function homeView(_params, { root, isStale }) {
   root.innerHTML = `
+    <section class="banners" id="banners"><div class="banner-track"><div class="banner skeleton"></div></div></section>
+
     <header class="page-head">
       <div class="breadcrumb">${esc(greeting())} 👋</div>
       <h1 class="large-title">Do que você precisa hoje?</h1>
@@ -59,6 +64,13 @@ export function homeView(_params, { root, isStale }) {
     <p class="footer-note">© ${new Date().getFullYear()} Guia Mão de Obra</p>
   `;
 
+  let stopCarousel = () => {};
+  listBanners().then((banners) => {
+    if (isStale()) return;
+    const el = root.querySelector('#banners');
+    if (el) stopCarousel = bannerCarousel(el, banners);
+  });
+
   listRecent(12)
     .then((pros) => {
       if (isStale()) return;
@@ -66,10 +78,13 @@ export function homeView(_params, { root, isStale }) {
       el.innerHTML = pros.length
         ? pros.map(proMini).join('')
         : '<p class="muted pad">Seja o primeiro profissional a se cadastrar!</p>';
+      animateIn(el);
     })
     .catch((err) => {
       console.error(err);
       const el = root.querySelector('#recent');
       if (el) el.innerHTML = '<p class="muted pad">Não foi possível carregar agora.</p>';
     });
+
+  return () => stopCarousel();
 }

@@ -20,10 +20,11 @@ export async function profileView({ id }, { root, isStale }) {
 
   const pro = await getProfessional(id);
   if (isStale()) return;
-  // Hidden profiles are only visible to their owner (rules enforce the same).
-  const isOwner = pro && !pro.published && (await currentUser())?.uid === pro.id;
+  // Unlisted profiles (hidden or unpaid) are only visible to their owner (rules enforce the same).
+  const listed = pro && pro.published && pro.active;
+  const isOwner = pro && !listed && (await currentUser())?.uid === pro.id;
   if (isStale()) return;
-  if (!pro || (!pro.published && !isOwner)) {
+  if (!pro || (!listed && !isOwner)) {
     root.innerHTML = emptyState({
       iconName: 'person',
       title: 'Perfil indisponível',
@@ -41,7 +42,14 @@ export async function profileView({ id }, { root, isStale }) {
   const mail = mailLink(pro.email, 'Orçamento — Guia Mão de Obra');
   const portfolio = Array.isArray(pro.portfolio) ? pro.portfolio : [];
 
-  root.innerHTML = `
+  const ownerNotice = isOwner ? `
+    <a class="notice notice--warning" href="${pro.active ? 'signup.html' : 'signup.html#plano'}">
+      ${icon('info')}
+      <span><strong>Só você vê esta página.</strong> ${pro.active ? 'Seu perfil está oculto nas buscas — ative em “Editar perfil”.' : 'Escolha um plano para publicar seu perfil.'}</span>
+      ${icon('chevronRight')}
+    </a>` : '';
+
+  root.innerHTML = `${ownerNotice}
     <article class="profile" style="--tile:${esc(tint)}">
       <figure class="profile__banner">
         ${pro.bannerURL

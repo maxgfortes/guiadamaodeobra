@@ -25,7 +25,17 @@ export const appConfig = {
   showDemoProfessionals: true,
   /** Firebase JS SDK version loaded from the gstatic CDN. */
   sdkVersion: '10.12.2',
+  /** Region of the Cloud Functions (must match functions/src/config.js). */
+  functionsRegion: 'southamerica-east1',
+  /**
+   * Mercado Pago PUBLIC key (Suas integrações → Credenciais).
+   * Use the TEST- key while testing; APP_USR- in production.
+   * The secret access token lives only in Cloud Functions secrets.
+   */
+  mercadoPagoPublicKey: 'YOUR_MP_PUBLIC_KEY',
 };
+
+export const isPaymentsConfigured = !appConfig.mercadoPagoPublicKey.startsWith('YOUR_');
 
 /**
  * Local development against the Firebase Emulator Suite:

@@ -6,6 +6,7 @@ import { getSpec } from '../data/categories.js';
 import { listBySpec } from '../services/professionals.js';
 import { pageHead, proRow, emptyState, listSkeleton } from '../ui/components.js';
 import { esc, normalize } from '../core/utils.js';
+import { animateIn } from '../ui/motion.js';
 
 export function specListView({ specId }, { root, isStale }) {
   const entry = getSpec(specId);
@@ -41,6 +42,7 @@ export function specListView({ specId }, { root, isStale }) {
           text: `Ainda não há profissionais de ${spec.name.toLowerCase()} cadastrados. Conhece alguém? Indique o Guia!`,
           action: '<a class="btn btn--sm btn--secondary" href="signup.html">Sou profissional</a>',
         });
+    animateIn(results);
   }
 
   function renderFilters() {

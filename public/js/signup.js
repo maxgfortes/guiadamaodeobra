@@ -7,7 +7,11 @@
  *      photo, banner, name, WhatsApp, e-mail, services, city/neighborhood,
  *      description, portfolio, visibility.
  *   3. Save: compress + upload new images to Storage, write the Firestore doc,
- *      remove images that were replaced/deleted, then open the public profile.
+ *      remove images that were replaced/deleted.
+ *   4. Not active yet (first signup / expired)? → plan + card payment
+ *      (views/plans.js). Cloud Functions activate the profile once paid.
+ *
+ * Deep link: signup.html#plano opens the payment step directly.
  */
 import { getFirebase, isFirebaseConfigured } from './services/firebase.js';
 import { currentUser, signInWithGoogle, signOut, getMyProfile, authErrorMessage } from './services/auth.js';
@@ -18,6 +22,8 @@ import { icon, chevron } from './ui/icons.js';
 import { toast } from './ui/toast.js';
 import { openSheet } from './ui/sheet.js';
 import { demoNote } from './ui/components.js';
+import { renderPlans } from './views/plans.js';
+import { initPWA } from './core/pwa.js';
 import {
   esc, normalize, digits, maskPhoneBR, formatPhoneBR, isEmail, avatarHTML, haptic, debounce,
 } from './core/utils.js';
@@ -42,7 +48,22 @@ const state = {
 /* ==========================================================================
    Boot
    ========================================================================== */
+initPWA();
 boot();
+
+const wantsPlans = () => location.hash === '#plano';
+let stopPlans = null;
+
+/** Payment step for the signed-in professional. */
+function showPlans() {
+  stopPlans?.();
+  window.scrollTo(0, 0);
+  stopPlans = renderPlans(root, {
+    user: state.user,
+    profile: state.existing,
+    onEdit: () => { history.replaceState(null, '', location.pathname); renderForm(); window.scrollTo(0, 0); },
+  });
+}
 
 async function boot() {
   if (!isFirebaseConfigured) return renderAuth({ demo: true });
@@ -74,7 +95,8 @@ async function enterForm(user) {
   state.banner = p?.bannerURL ? { url: p.bannerURL } : null;
   state.portfolio = (p?.portfolio || []).map((url) => ({ url }));
   state.specs = [...(p?.specs || [])];
-  renderForm();
+  if (p && (wantsPlans() || !p.active)) showPlans();
+  else renderForm();
 }
 
 /* ==========================================================================
@@ -235,7 +257,7 @@ function renderForm() {
       </div>` : ''}
 
       <div class="savebar"><div class="savebar__inner">
-        <button class="btn btn--block" type="submit" id="save">${isEdit ? 'Salvar alterações' : 'Publicar perfil'}</button>
+        <button class="btn btn--block" type="submit" id="save">${state.existing?.active ? 'Salvar alterações' : 'Salvar e escolher plano'}</button>
       </div></div>
     </form>`;
 
@@ -496,10 +518,12 @@ async function save(form) {
       bannerURL: state.banner?.url || '',
       portfolio: state.portfolio.map((p) => p.url),
       published: form.elements.published.checked,
-      createdAt: prev.createdAt || fs.serverTimestamp(),
+      // createdAt is only set on creation; merge keeps it (and server-only
+      // billing fields) untouched on updates.
+      ...(state.existing ? {} : { createdAt: fs.serverTimestamp() }),
       updatedAt: fs.serverTimestamp(),
     };
-    await fs.setDoc(fs.doc(db, 'professionals', uid), doc);
+    await fs.setDoc(fs.doc(db, 'professionals', uid), doc, { merge: true });
 
     // 3. Clean up files that are no longer referenced (best effort).
     const keep = new Set([doc.photoURL, doc.bannerURL, ...doc.portfolio]);
@@ -507,11 +531,17 @@ async function save(form) {
       .filter((u) => u && u.includes('firebasestorage') && !keep.has(u));
     Promise.all(old.map(deleteByUrl));
 
-    state.existing = { ...doc, createdAt: prev.createdAt || fs.Timestamp.now() };
+    state.existing = { ...prev, ...doc, createdAt: prev.createdAt || fs.Timestamp.now() };
     state.dirty = false;
     invalidateCache();
-    hud.done(prev.name ? 'Perfil atualizado' : 'Perfil publicado!');
-    setTimeout(() => { location.href = `index.html#/p/${uid}`; }, 900);
+    if (state.existing.active) {
+      hud.done(prev.name ? 'Perfil atualizado' : 'Perfil salvo!');
+      setTimeout(() => { location.href = `index.html#/p/${uid}`; }, 900);
+    } else {
+      // Not paid yet: continue to the plan / payment step.
+      hud.done('Perfil salvo!');
+      setTimeout(() => { hud.close(); showPlans(); }, 700);
+    }
   } catch (err) {
     console.error(err);
     hud.close();
