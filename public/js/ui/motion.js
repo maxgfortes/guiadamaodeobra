@@ -1,6 +1,5 @@
 /**
- * Motion helpers — iOS-like transitions, kept cheap (transform/opacity only)
- * and disabled under prefers-reduced-motion.
+ * Motion helpers — iOS-like transitions, kept cheap (transform/opacity only).
  *
  *   swapView     Replace the routed view with a push / pop / tab transition.
  *                Uses the View Transitions API when available (old and new
@@ -9,15 +8,13 @@
  *   animateIn    Staggered rise-in for list rows, tiles, cards and chips.
  *   initImageFades  Images fade in once decoded instead of popping.
  */
-const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
-
 export async function swapView(root, view, transition, afterSwap) {
   const swap = () => {
     root.replaceChildren(view);
     afterSwap?.();
   };
   const first = !root.querySelector('.view');
-  if (reduced() || first) { swap(); return; }
+  if (first) { swap(); return; }
 
   if (document.startViewTransition) {
     document.documentElement.dataset.nav = transition; // forward | back | tab
@@ -40,7 +37,6 @@ const STAGGER_SELECTORS = [
 ];
 
 export function animateIn(scope) {
-  if (reduced()) return;
   const groups = new Map();
   scope.querySelectorAll(STAGGER_SELECTORS.join(',')).forEach((el) => {
     const parent = el.parentElement;

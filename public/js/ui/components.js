@@ -4,7 +4,6 @@
 import { esc, avatarHTML, whatsappLink } from '../core/utils.js';
 import { icon, chevron } from './icons.js';
 import { primarySpecialty } from '../services/professionals.js';
-import { isFirebaseConfigured } from '../services/firebase.js';
 
 /** Page header with optional back link, large title and subtitle. */
 export function pageHead({ title, subtitle = '', backLabel = '', backHref = '', crumb = '' }) {
@@ -87,12 +86,4 @@ export function listSkeleton(rows = 5) {
       </div>
     </div>`;
   return `<div class="group"><div class="list">${row.repeat(rows)}</div></div>`;
-}
-
-export function demoNote() {
-  if (isFirebaseConfigured) return '';
-  return `
-    <div class="demo-note">${icon('info')}
-      <span><strong>Modo demonstração.</strong> Configure o Firebase em <code>js/firebase-config.js</code> para ativar cadastros reais.</span>
-    </div>`;
 }

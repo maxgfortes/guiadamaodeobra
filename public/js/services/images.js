@@ -73,7 +73,6 @@ export async function compressImage(file, preset = IMAGE_PRESETS.portfolio) {
  */
 export async function uploadImage(path, blob, onProgress) {
   const fb = await getFirebase();
-  if (!fb) throw new Error('firebase-not-configured');
   const { storage, st } = fb;
   const ref = st.ref(storage, path);
   const task = st.uploadBytesResumable(ref, blob, {
@@ -92,7 +91,7 @@ export async function uploadImage(path, blob, onProgress) {
 /** Best-effort delete of a previously uploaded file by its download URL. */
 export async function deleteByUrl(url) {
   const fb = await getFirebase();
-  if (!fb || !url) return;
+  if (!url) return;
   try {
     await fb.st.deleteObject(fb.st.ref(fb.storage, url));
   } catch (err) {

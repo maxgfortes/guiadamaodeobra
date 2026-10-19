@@ -6,7 +6,7 @@ rules_version = '2';
 //   professionals/{uid}   Professional profile. Doc id == Firebase Auth uid.
 //                         `active` + `subscription` are SERVER-ONLY (Cloud Functions).
 //   payments/{paymentId}  Mercado Pago payments (written only by Cloud Functions).
-//   banners/{bannerId}    Home carousel, managed by admins.
+//   banners/{bannerId}    Home carousel (image + link), managed by admins.
 //
 // Principles
 //   * Visitors (no account) read profiles that are published AND paid (active).
@@ -96,14 +96,13 @@ service cloud.firestore {
 
     /* ---------- banners (home carousel) ---------- */
 
+    // Banner = image + optional link (opened in a new tab by the app).
     function validBanner(d) {
-      return d.keys().hasOnly(['title', 'subtitle', 'cta', 'link', 'color', 'imageURL', 'active', 'order', 'updatedAt'])
-          && isStr(d.title, 0, 80)
-          && (!('subtitle' in d) || isStr(d.subtitle, 0, 140))
-          && (!('cta' in d) || isStr(d.cta, 0, 30))
-          && (!('link' in d) || isStr(d.link, 0, 500))
-          && (!('color' in d) || isStr(d.color, 0, 20))
-          && (!('imageURL' in d) || isUrlOrEmpty(d.imageURL))
+      return d.keys().hasOnly(['imageURL', 'link', 'alt', 'active', 'order', 'updatedAt'])
+          && isUrl(d.imageURL)
+          && (!('link' in d) || (d.link is string && (d.link.size() == 0
+              || (d.link.size() <= 500 && d.link.matches('^https?://.+')))))
+          && (!('alt' in d) || isStr(d.alt, 0, 120))
           && d.active is bool
           && d.order is number;
     }

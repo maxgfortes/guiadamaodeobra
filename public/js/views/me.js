@@ -6,7 +6,6 @@ import { pageHead } from '../ui/components.js';
 import { icon, chevron } from '../ui/icons.js';
 import { toast } from '../ui/toast.js';
 import { currentUser, getMyProfile, signOut } from '../services/auth.js';
-import { isFirebaseConfigured } from '../services/firebase.js';
 import { primarySpecialty } from '../services/professionals.js';
 import { esc, avatarHTML } from '../core/utils.js';
 import { canInstall, promptInstall, isIOS } from '../core/pwa.js';
@@ -65,7 +64,7 @@ function renderGuest(root) {
         <h2 style="margin:0 0 6px;font-size:22px;letter-spacing:.35px">Você presta serviços?</h2>
         <p class="muted" style="margin:0 0 18px;font-size:15px">Cadastre-se em 2 minutos com sua conta Google e comece a receber pedidos.</p>
         <a class="btn btn--block" href="signup.html">Cadastrar meu serviço</a>
-        ${isFirebaseConfigured ? '<a class="text-btn mt-8" href="signup.html">Já tenho cadastro · Entrar</a>' : ''}
+        <a class="text-btn mt-8" href="signup.html">Já tenho cadastro · Entrar</a>
       </div>
     </div>
     <div class="group">

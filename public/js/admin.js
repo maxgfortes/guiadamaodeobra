@@ -11,7 +11,7 @@
  *   Banners        home carousel CRUD (Firestore + Storage, admin-only rules)
  *   Admins         grant/revoke admin to another account
  */
-import { getFirebase, callFunction, isFirebaseConfigured } from './services/firebase.js';
+import { getFirebase, callFunction } from './services/firebase.js';
 import { signInWithGoogle, signOut, currentUser, authErrorMessage } from './services/auth.js';
 import { compressImage, uploadImage, deleteByUrl, validateImageFile, IMAGE_PRESETS } from './services/images.js';
 import { primarySpecialty } from './services/professionals.js';
@@ -46,10 +46,6 @@ const fmtDateTime = (ts) => (ts?.toDate?.() || null)
 boot();
 
 async function boot() {
-  if (!isFirebaseConfigured) {
-    root.innerHTML = gateHTML('Firebase não configurado', 'Configure js/firebase-config.js para usar o console.');
-    return;
-  }
   fb = await getFirebase();
   const user = await currentUser();
   if (!user) return renderLogin();
@@ -326,8 +322,10 @@ async function payments(body) {
 }
 
 /* ==========================================================================
-   Banners
+   Banners — image + link (opens in a new tab)
    ========================================================================== */
+const isWebUrl = (v) => /^https?:\/\/\S+$/i.test(v);
+
 async function banners(body) {
   const { db, fs } = fb;
   const snap = await fs.getDocs(fs.query(fs.collection(db, 'banners'), fs.orderBy('order', 'asc')));
@@ -339,10 +337,8 @@ async function banners(body) {
     <div class="banner-admin">
       ${rows.map((b, i) => `
         <div class="banner-admin__item card">
-          <div class="banner banner--preview" style="--banner:${esc(b.color || '#007aff')}">
-            ${b.imageURL ? `<img class="banner__img" src="${esc(b.imageURL)}" alt="">` : '<span class="banner__glow"></span>'}
-            <span class="banner__body"><strong class="banner__title">${esc(b.title)}</strong><span class="banner__subtitle">${esc(b.subtitle || '')}</span></span>
-          </div>
+          <div class="banner banner--preview">${b.imageURL ? `<img class="banner__img is-loaded" src="${esc(b.imageURL)}" alt="">` : ''}</div>
+          <div class="banner-admin__link">${icon('share')}<span>${esc(b.link || 'Sem link')}</span></div>
           <div class="banner-admin__bar">
             <span class="pill pill--${b.active ? 'success' : 'neutral'}">${b.active ? 'Ativo' : 'Inativo'}</span>
             <span class="spacer"></span>
@@ -351,7 +347,7 @@ async function banners(body) {
             <button class="round-btn" data-edit="${b.id}" aria-label="Editar">${icon('edit')}</button>
             <button class="round-btn round-btn--danger" data-del="${b.id}" aria-label="Excluir">${icon('trash')}</button>
           </div>
-        </div>`).join('') || '<div class="empty"><p>Nenhum banner. Enquanto não houver banners ativos, a home mostra os destaques padrão.</p></div>'}
+        </div>`).join('') || '<div class="empty"><p>Nenhum banner. Sem banners ativos, o carrossel não aparece na home.</p></div>'}
     </div>`;
 
   body.querySelector('#add').addEventListener('click', () => editBanner(null, rows.length));
@@ -361,9 +357,9 @@ async function banners(body) {
     if (t.dataset.edit) editBanner(rows.find((r) => r.id === t.dataset.edit));
     if (t.dataset.del) {
       const b = rows.find((r) => r.id === t.dataset.del);
-      if (!(await confirmSheet({ title: 'Excluir banner?', message: b.title, confirmLabel: 'Excluir', destructive: true }))) return;
+      if (!(await confirmSheet({ title: 'Excluir banner?', message: b.link || '', confirmLabel: 'Excluir', destructive: true }))) return;
       await fs.deleteDoc(fs.doc(db, 'banners', b.id));
-      if (b.imageURL) deleteByUrl(b.imageURL);
+      if (b.imageURL?.includes('firebasestorage')) deleteByUrl(b.imageURL);
       toast('Banner excluído', 'success');
       showTab();
     }
@@ -392,66 +388,64 @@ function editBanner(b, nextOrder = 0) {
   sheet.body.innerHTML = `
     <form id="bf" class="banner-form" novalidate>
       <div class="banner banner--preview" id="bprev"></div>
-      <p class="group__header mt-16">Conteúdo</p>
+      <p class="group__header mt-16">Imagem</p>
       <div class="group"><div class="list">
-        <label class="field"><span class="field__label">Título</span><input name="title" maxlength="80" value="${esc(b?.title || '')}" placeholder="Ex.: Semana do eletricista"></label>
-        <label class="field"><span class="field__label">Subtítulo</span><input name="subtitle" maxlength="140" value="${esc(b?.subtitle || '')}" placeholder="Opcional"></label>
-        <label class="field"><span class="field__label">Botão</span><input name="cta" maxlength="30" value="${esc(b?.cta || '')}" placeholder="Ex.: Ver profissionais"></label>
-        <label class="field"><span class="field__label">Link</span><input name="link" maxlength="500" value="${esc(b?.link || '')}" placeholder="#/s/eletricista ou https://…"></label>
-      </div><p class="group__footer">Links internos começam com #/ (ex.: #/c/reformas). Externos com https://.</p></div>
-      <p class="group__header">Aparência</p>
+        <label class="field"><span class="field__label">Enviar</span><input name="image" type="file" accept="image/*"></label>
+        <label class="field"><span class="field__label">ou URL</span><input name="imageURL" type="url" inputmode="url" value="${esc(b?.imageURL || '')}" placeholder="https://…/banner.jpg"></label>
+      </div><p class="group__footer">Formato largo 5:2 (ex.: 1600×640 px). JPG ou PNG.</p></div>
+      <p class="group__header">Ao tocar</p>
       <div class="group"><div class="list">
-        <label class="field"><span class="field__label">Cor</span><input name="color" type="color" value="${esc(b?.color || '#007aff')}"></label>
-        <label class="field"><span class="field__label">Imagem</span><input name="image" type="file" accept="image/*"></label>
+        <label class="field"><span class="field__label">Link</span><input name="link" type="url" inputmode="url" maxlength="500" value="${esc(b?.link || '')}" placeholder="https://…"></label>
+        <label class="field"><span class="field__label">Descrição</span><input name="alt" maxlength="120" value="${esc(b?.alt || '')}" placeholder="Texto alternativo (acessibilidade)"></label>
         <div class="field"><span class="field__label" style="flex:1;width:auto">Ativo</span>
           <span class="switch"><input type="checkbox" name="active" ${b?.active === false ? '' : 'checked'}><span class="switch__track"><span class="switch__thumb"></span></span></span></div>
-      </div><p class="group__footer">Imagem opcional, formato largo (ex.: 1600×640). Sem imagem, usa a cor de fundo.</p></div>
+      </div><p class="group__footer">O link abre em uma nova aba.</p></div>
     </form>`;
 
   const form = sheet.body.querySelector('#bf');
   const prev = sheet.body.querySelector('#bprev');
-  let imgURL = b?.imageURL || '';
+  let previewURL = b?.imageURL || '';
   const paint = () => {
-    const f = form.elements;
-    prev.style.setProperty('--banner', f.color.value);
-    prev.innerHTML = `${imgURL ? `<img class="banner__img" src="${esc(imgURL)}" alt="">` : '<span class="banner__glow"></span>'}
-      <span class="banner__body"><strong class="banner__title">${esc(f.title.value || 'Título do banner')}</strong>
-      <span class="banner__subtitle">${esc(f.subtitle.value)}</span>${f.cta.value ? `<span class="banner__cta">${esc(f.cta.value)}</span>` : ''}</span>`;
+    prev.innerHTML = previewURL
+      ? `<img class="banner__img is-loaded" src="${esc(previewURL)}" alt="">`
+      : `<span class="banner__empty">${icon('image', { stroke: 1.5 })}<span>Prévia do banner</span></span>`;
   };
-  form.addEventListener('input', paint);
+  form.elements.imageURL.addEventListener('input', (e) => {
+    if (file) return;
+    previewURL = isWebUrl(e.target.value.trim()) ? e.target.value.trim() : '';
+    paint();
+  });
   form.elements.image.addEventListener('change', (e) => {
     const f = e.target.files[0];
     if (!f) return;
     const err = validateImageFile(f);
     if (err) { toast(err, 'error'); return; }
     file = f;
-    imgURL = URL.createObjectURL(f);
+    previewURL = URL.createObjectURL(f);
+    form.elements.imageURL.value = '';
     paint();
   });
   paint();
 
   async function save() {
     const f = form.elements;
-    if (!f.title.value.trim()) { toast('Informe o título', 'error'); return; }
     const link = f.link.value.trim();
-    if (link && !/^(#\/|signup\.html|https:\/\/)/.test(link)) { toast('Link deve começar com #/ ou https://', 'error'); return; }
+    let imageURL = f.imageURL.value.trim();
+    if (!file && !/^https:\/\/\S+$/i.test(imageURL)) { toast('Envie uma imagem ou informe a URL dela (https://)', 'error'); return; }
+    if (link && !isWebUrl(link)) { toast('O link deve começar com https://', 'error'); return; }
     const btn = sheet.el.querySelector('[data-right]');
     btn.disabled = true;
     try {
       const ref = b ? fs.doc(db, 'banners', b.id) : fs.doc(fs.collection(db, 'banners'));
-      let imageURL = b?.imageURL || '';
       if (file) {
         const blob = await compressImage(file, IMAGE_PRESETS.banner);
         imageURL = await uploadImage(`banners/${ref.id}-${Date.now()}.jpg`, blob);
-        if (b?.imageURL) deleteByUrl(b.imageURL);
       }
+      if (b?.imageURL && b.imageURL !== imageURL && b.imageURL.includes('firebasestorage')) deleteByUrl(b.imageURL);
       await fs.setDoc(ref, {
-        title: f.title.value.trim(),
-        subtitle: f.subtitle.value.trim(),
-        cta: f.cta.value.trim(),
-        link,
-        color: f.color.value,
         imageURL,
+        link,
+        alt: f.alt.value.trim(),
         active: f.active.checked,
         order: b ? b.order : nextOrder,
         updatedAt: fs.serverTimestamp(),

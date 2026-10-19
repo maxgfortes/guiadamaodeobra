@@ -13,7 +13,7 @@
  *
  * Deep link: signup.html#plano opens the payment step directly.
  */
-import { getFirebase, isFirebaseConfigured } from './services/firebase.js';
+import { getFirebase } from './services/firebase.js';
 import { currentUser, signInWithGoogle, signOut, getMyProfile, authErrorMessage } from './services/auth.js';
 import { compressImage, uploadImage, deleteByUrl, validateImageFile, IMAGE_PRESETS } from './services/images.js';
 import { invalidateCache } from './services/professionals.js';
@@ -21,7 +21,6 @@ import { CATEGORIES, getSpec, categoriesForSpecs } from './data/categories.js';
 import { icon, chevron } from './ui/icons.js';
 import { toast } from './ui/toast.js';
 import { openSheet } from './ui/sheet.js';
-import { demoNote } from './ui/components.js';
 import { renderPlans } from './views/plans.js';
 import { initPWA } from './core/pwa.js';
 import {
@@ -66,7 +65,6 @@ function showPlans() {
 }
 
 async function boot() {
-  if (!isFirebaseConfigured) return renderAuth({ demo: true });
   try {
     // Completes a pending redirect sign-in (popup fallback) if any.
     const fb = await getFirebase();
@@ -102,19 +100,17 @@ async function enterForm(user) {
 /* ==========================================================================
    Screen 1 — Google sign-in
    ========================================================================== */
-function renderAuth({ demo = false } = {}) {
+function renderAuth() {
   root.innerHTML = `
     <section class="auth-hero">
       <div class="auth-hero__art">${icon('briefcase', { stroke: 1.6 })}</div>
       <h1>Mostre seu trabalho para quem precisa</h1>
       <p>Crie seu perfil profissional grátis e receba pedidos direto no WhatsApp.</p>
-      <button class="btn btn--block btn--google" id="google" ${demo ? 'disabled' : ''}>
+      <button class="btn btn--block btn--google" id="google">
         ${icon('google')}<span>Continuar com Google</span>
       </button>
-      ${demo ? `<button class="btn btn--block btn--secondary mt-8" id="preview">Ver formulário (demonstração)</button>` : ''}
       <p class="legal">Usamos sua conta Google apenas para identificar seu perfil. Seus contatos ficam visíveis publicamente para clientes.</p>
     </section>
-    ${demo ? demoNote() : ''}
     <div class="group steps">
       <ul class="list list--icons">
         ${[
@@ -126,11 +122,6 @@ function renderAuth({ demo = false } = {}) {
             <div class="row__body"><div class="row__title">${t}</div><div class="row__subtitle">${s}</div></div></div></li>`).join('')}
       </ul>
     </div>`;
-
-  root.querySelector('#preview')?.addEventListener('click', () => {
-    state.user = { uid: 'demo', displayName: '', email: '' };
-    renderForm();
-  });
 
   const btn = root.querySelector('#google');
   btn.addEventListener('click', async () => {
@@ -166,7 +157,6 @@ function renderForm() {
         <h1 class="large-title">${isEdit ? 'Editar perfil' : 'Seu perfil'}</h1>
         <p class="subtitle">${isEdit ? 'As alterações aparecem na hora para os clientes.' : 'Leva uns 2 minutos. Capriche nas fotos!'}</p>
       </header>
-      ${state.user.uid === 'demo' ? demoNote() : ''}
 
       <!-- Banner + avatar -->
       <div class="media-edit mt-16">
@@ -247,14 +237,13 @@ function renderForm() {
         <p class="group__footer">Desative para pausar seu perfil temporariamente.</p>
       </div>
 
-      ${state.user.uid !== 'demo' ? `
       <div class="group">
         <ul class="list">
           ${isEdit ? `<li><a class="row row--action" href="index.html#/p/${esc(u.uid)}" style="justify-content:center">Ver meu perfil público</a></li>` : ''}
           <li><button type="button" class="row row--destructive" id="logout">Sair da conta</button></li>
         </ul>
         <p class="group__footer center">Conectado como ${esc(u.email || '')}</p>
-      </div>` : ''}
+      </div>
 
       <div class="savebar"><div class="savebar__inner">
         <button class="btn btn--block" type="submit" id="save">${state.existing?.active ? 'Salvar alterações' : 'Salvar e escolher plano'}</button>
@@ -464,10 +453,6 @@ async function save(form) {
     const el = errors[0].name === 'specs' ? root.querySelector('#pick-specs') : form.elements[errors[0].name];
     el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     if (errors[0].name !== 'specs') el?.focus({ preventScroll: true });
-    return;
-  }
-  if (state.user.uid === 'demo' || !isFirebaseConfigured) {
-    toast('Modo demonstração: configure o Firebase para publicar.', 'info', 3500);
     return;
   }
 

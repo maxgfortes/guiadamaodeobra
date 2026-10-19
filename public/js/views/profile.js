@@ -139,12 +139,6 @@ function galleryHTML(pro, portfolio, tint) {
         <img src="${esc(url)}" alt="" loading="lazy" decoding="async">
       </button>`).join('')}</div>`;
   }
-  // Demo profiles: tinted placeholders so the layout reads as intended.
-  if (pro.demo && pro.portfolioCount) {
-    const shades = [0, 12, 24, 6, 18, 30];
-    return `<div class="gallery">${Array.from({ length: pro.portfolioCount }, (_, i) => `
-      <div class="gallery__item"><div class="gallery__ph" style="background:color-mix(in srgb, ${esc(tint)} ${70 - shades[i % 6]}%, #1c1c1e)">${icon('image', { stroke: 1.5 })}</div></div>`).join('')}</div>`;
-  }
   return '<p class="muted pad" style="font-size:15px">Nenhuma foto publicada ainda.</p>';
 }
 

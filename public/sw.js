@@ -10,7 +10,7 @@
  *
  * Bump VERSION on every deploy that changes shell files.
  */
-const VERSION = 'gmo-v2';
+const VERSION = 'gmo-v3';
 const SHELL = `${VERSION}-shell`;
 const RUNTIME = `${VERSION}-runtime`;
 

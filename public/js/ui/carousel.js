@@ -7,9 +7,8 @@ import { esc } from '../core/utils.js';
 
 const INTERVAL = 5000;
 
-function isSafeLink(link) {
-  return /^(#\/|signup\.html|https:\/\/)/.test(String(link || ''));
-}
+/** Only web links open from banners (new tab). */
+export const isSafeLink = (link) => /^https?:\/\//i.test(String(link || ''));
 
 export function bannerCarousel(container, banners) {
   if (!banners.length) { container.remove(); return () => {}; }
@@ -17,19 +16,10 @@ export function bannerCarousel(container, banners) {
   container.innerHTML = `
     <div class="banner-track" role="region" aria-roledescription="carrossel" aria-label="Destaques">
       ${banners.map((b, i) => {
-        const href = isSafeLink(b.link) ? b.link : '';
-        const ext = href.startsWith('https://');
-        const tag = href ? 'a' : 'div';
-        return `
-          <${tag} class="banner" ${href ? `href="${esc(href)}" ${ext ? 'target="_blank" rel="noopener"' : ''}` : ''}
-             style="--banner:${esc(b.color || '#007aff')}" aria-label="${i + 1} de ${banners.length}: ${esc(b.title)}">
-            ${b.imageURL ? `<img class="banner__img" src="${esc(b.imageURL)}" alt="" ${i ? 'loading="lazy"' : ''} decoding="async">` : '<span class="banner__glow" aria-hidden="true"></span>'}
-            <span class="banner__body">
-              ${b.title ? `<strong class="banner__title">${esc(b.title)}</strong>` : ''}
-              ${b.subtitle ? `<span class="banner__subtitle">${esc(b.subtitle)}</span>` : ''}
-              ${b.cta && href ? `<span class="banner__cta">${esc(b.cta)}</span>` : ''}
-            </span>
-          </${tag}>`;
+        const img = `<img class="banner__img" src="${esc(b.imageURL)}" alt="${esc(b.alt || '')}" ${i ? 'loading="lazy"' : 'fetchpriority="high"'} decoding="async" draggable="false">`;
+        return isSafeLink(b.link)
+          ? `<a class="banner" href="${esc(b.link)}" target="_blank" rel="noopener noreferrer" aria-label="${esc(b.alt || `Destaque ${i + 1}`)} (abre em nova aba)">${img}</a>`
+          : `<div class="banner">${img}</div>`;
       }).join('')}
     </div>
     ${banners.length > 1 ? `<div class="banner-dots" aria-hidden="true">${banners.map((_, i) => `<span class="${i ? '' : 'is-active'}"></span>`).join('')}</div>` : ''}`;
@@ -48,7 +38,10 @@ export function bannerCarousel(container, banners) {
   };
   const schedule = () => {
     clearTimeout(timer);
-    if (!paused && !document.hidden) timer = setTimeout(() => go(index + 1), INTERVAL);
+    if (paused || document.hidden) return;
+    // Views are kept alive between tabs: while detached, just poll cheaply.
+    if (!container.isConnected) { timer = setTimeout(schedule, 1000); return; }
+    timer = setTimeout(() => go(index + 1), INTERVAL);
   };
 
   // Sync dots with the actual scroll position (covers manual swipes too).

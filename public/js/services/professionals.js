@@ -2,8 +2,7 @@
  * Professionals data access.
  *
  * Single place that talks to Firestore for the public directory. Views never
- * import the SDK directly. In demo mode (no Firebase config) every call is
- * served from bundled sample data, so the whole UI works out of the box.
+ * import the SDK directly.
  *
  * Firestore model — collection `professionals`, doc id = Auth uid:
  *   name, nameLower, whatsapp, phone, email,
@@ -16,13 +15,10 @@
  *   subscription: {...}      server-only: status, planId, expiresAt
  *   createdAt, updatedAt     server timestamps
  */
-import { getFirebase, isFirebaseConfigured } from './firebase.js';
-import { appConfig } from '../firebase-config.js';
-import { DEMO_PROFESSIONALS } from '../data/demo.js';
+import { getFirebase } from './firebase.js';
 import { normalize } from '../core/utils.js';
 import { specName } from '../data/categories.js';
 
-const useDemo = !isFirebaseConfigured || appConfig.showDemoProfessionals;
 const cache = new Map(); // key → { at, value }
 const TTL = 60_000;
 
@@ -51,31 +47,16 @@ function fromDoc(snap) {
 
 const byRecent = (a, b) => (b.updatedAt || 0) - (a.updatedAt || 0);
 
-function demoFor(predicate = () => true) {
-  return useDemo ? DEMO_PROFESSIONALS.filter(predicate) : [];
-}
-
-/**
- * Run a Firestore list query. While demo profiles are enabled, a failing
- * query (Firestore not created yet, index still building, offline) degrades
- * to demo-only results instead of breaking the screen.
- */
-async function queryOrDemo(buildQuery) {
+/** Run a Firestore list query and map the documents. */
+async function runQuery(buildQuery) {
   const fb = await getFirebase();
-  if (!fb) return [];
-  try {
-    return (await fb.fs.getDocs(buildQuery(fb))).docs.map(fromDoc);
-  } catch (err) {
-    if (!useDemo) throw err;
-    console.warn('Firestore query failed; showing demo data only.', err);
-    return [];
-  }
+  return (await fb.fs.getDocs(buildQuery(fb))).docs.map(fromDoc);
 }
 
 /** Professionals offering a given niche, newest first. */
 export function listBySpec(specId) {
   return cached(`spec:${specId}`, async () => {
-    const real = await queryOrDemo(({ db, fs }) => fs.query(
+    const list = await runQuery(({ db, fs }) => fs.query(
       fs.collection(db, 'professionals'),
       fs.where('published', '==', true),
       fs.where('active', '==', true),
@@ -83,30 +64,27 @@ export function listBySpec(specId) {
       fs.orderBy('updatedAt', 'desc'),
       fs.limit(100),
     ));
-    return [...real, ...demoFor((p) => p.specs.includes(specId))].sort(byRecent);
+    return list.sort(byRecent);
   });
 }
 
 /** Most recently updated profiles (home carousel + search corpus). */
 export function listRecent(max = 60) {
   return cached(`recent:${max}`, async () => {
-    const real = await queryOrDemo(({ db, fs }) => fs.query(
+    const list = await runQuery(({ db, fs }) => fs.query(
       fs.collection(db, 'professionals'),
       fs.where('published', '==', true),
       fs.where('active', '==', true),
       fs.orderBy('updatedAt', 'desc'),
       fs.limit(max),
     ));
-    return [...real, ...demoFor()].sort(byRecent).slice(0, max);
+    return list;
   });
 }
 
-/** One profile by id (demo or Firestore). Returns null if missing/hidden. */
+/** One profile by id. Returns null if missing or not visible to the caller. */
 export async function getProfessional(id) {
-  if (id.startsWith('demo-')) return DEMO_PROFESSIONALS.find((p) => p.id === id) || null;
-  const fb = await getFirebase();
-  if (!fb) return null;
-  const { db, fs } = fb;
+  const { db, fs } = await getFirebase();
   try {
     const snap = await fs.getDoc(fs.doc(db, 'professionals', id));
     return snap.exists() ? fromDoc(snap) : null;

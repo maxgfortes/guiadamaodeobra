@@ -4,7 +4,7 @@
  */
 import { CATEGORIES, POPULAR_SPECS, getSpec } from '../data/categories.js';
 import { listRecent } from '../services/professionals.js';
-import { iconTile, proMini, demoNote } from '../ui/components.js';
+import { iconTile, proMini } from '../ui/components.js';
 import { icon } from '../ui/icons.js';
 import { esc } from '../core/utils.js';
 import { listBanners } from '../services/banners.js';
@@ -32,7 +32,6 @@ export function homeView(_params, { root, isStale }) {
         ${icon('search')}<span>Eletricista, diarista, pintor…</span>
       </a>
     </div>
-    ${demoNote()}
 
     <h2 class="section-title">Categorias <a href="#/explore">Ver todas</a></h2>
     <div class="cat-grid">

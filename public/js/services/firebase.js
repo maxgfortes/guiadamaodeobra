@@ -5,19 +5,17 @@
  * so the first paint of the directory never waits on Firebase. Every caller
  * goes through `getFirebase()`, which resolves to a single shared instance.
  */
-import { firebaseConfig, appConfig, isFirebaseConfigured, useEmulators } from '../firebase-config.js';
+import { firebaseConfig, appConfig, useEmulators } from '../firebase-config.js';
 
 const CDN = `https://www.gstatic.com/firebasejs/${appConfig.sdkVersion}`;
 
 let instancePromise = null;
 
 /**
- * @returns {Promise<null | {app, auth, db, storage, fs, st, au}>}
+ * @returns {Promise<{app, auth, db, storage, fs, st, au}>}
  *   `fs`, `st`, `au` are the Firestore / Storage / Auth module namespaces.
- *   Resolves to null in demo mode (no config).
  */
 export function getFirebase() {
-  if (!isFirebaseConfigured) return Promise.resolve(null);
   if (!instancePromise) {
     instancePromise = (async () => {
       const [appMod, au, fs, st] = await Promise.all([
@@ -54,7 +52,6 @@ function getFunctionsClient() {
   if (!functionsPromise) {
     functionsPromise = (async () => {
       const fb = await getFirebase();
-      if (!fb) throw new Error('firebase-not-configured');
       const fn = await import(`${CDN}/firebase-functions.js`);
       const functions = fn.getFunctions(fb.app, appConfig.functionsRegion);
       if (useEmulators) fn.connectFunctionsEmulator(functions, location.hostname, 5001);
@@ -74,4 +71,3 @@ export async function callFunction(name, payload) {
   return res.data;
 }
 
-export { isFirebaseConfigured };

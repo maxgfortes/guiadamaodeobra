@@ -81,8 +81,8 @@
 *, *::before, *::after { box-sizing: border-box; }
 html {
   -webkit-text-size-adjust: 100%;
-  /* No rubber-band / scroll chaining (iOS 16+ Safari, Chrome, Firefox). */
-  overscroll-behavior: none;
+  /* Native elastic overscroll ("bounce") on iOS; stretch/glow on Android. */
+  overscroll-behavior-y: auto;
   scrollbar-width: none;
   background: var(--bg);
 }
@@ -100,7 +100,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
-  overscroll-behavior: none;
+  overscroll-behavior-y: auto;
 }
 input, textarea, [contenteditable] { -webkit-touch-callout: default; }
 img { display: block; max-width: 100%; }
@@ -515,13 +515,6 @@ a { color: var(--tint); text-decoration: none; }
 @keyframes toast-in { from { opacity: 0; transform: translateY(-16px) scale(.96); } }
 @keyframes toast-out { to { opacity: 0; transform: translateY(-10px) scale(.98); } }
 
-/* Demo mode banner */
-.demo-note {
-  margin: 8px var(--gutter) 12px; padding: 10px 12px; border-radius: 10px;
-  background: color-mix(in srgb, var(--orange) 14%, transparent); color: var(--label);
-  font-size: 13px; letter-spacing: -0.08px; display: flex; gap: 8px; align-items: flex-start;
-}
-.demo-note svg { width: 16px; height: 16px; color: var(--orange); flex-shrink: 0; margin-top: 1px; }
 
 /* ---------- Action sheet / modal sheet ---------- */
 .sheet-backdrop {
@@ -600,9 +593,6 @@ a { color: var(--tint); text-decoration: none; }
   .profile__banner { margin: 12px var(--gutter) 0; border-radius: var(--radius-lg); }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
-}
 
 /* ==========================================================================
    Signup / profile editor
@@ -746,40 +736,22 @@ a.notice:active { opacity: .7; }
   overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch;
 }
 .banner {
-  position: relative; flex: 0 0 calc(100% - 2 * var(--gutter)); margin: 0 var(--gutter);
+  position: relative; display: block; flex: 0 0 calc(100% - 2 * var(--gutter)); margin: 0 var(--gutter);
   scroll-snap-align: center; scroll-snap-stop: always;
-  height: 148px; border-radius: var(--radius-lg); overflow: hidden; isolation: isolate;
-  display: flex; align-items: flex-end; color: #fff;
-  background: linear-gradient(135deg, var(--banner, #007aff), color-mix(in srgb, var(--banner, #007aff) 55%, #000));
-  box-shadow: 0 6px 20px color-mix(in srgb, var(--banner, #007aff) 28%, transparent);
+  aspect-ratio: 5 / 2; border-radius: var(--radius-lg); overflow: hidden;
+  background: var(--bg-fill);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .10), inset 0 0 0 .5px rgba(0,0,0,.05);
   transition: transform .2s var(--ease);
+  -webkit-user-drag: none; user-select: none;
 }
 .banner + .banner { margin-left: 0; }
-.banner:active { transform: scale(.98); }
-.banner.skeleton { box-shadow: none; }
-.banner__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; }
-.banner__img + .banner__body::before {
-  content: ''; position: absolute; inset: 0; z-index: -1;
-  background: linear-gradient(180deg, transparent 20%, rgba(0,0,0,.55));
-}
-.banner__glow {
-  position: absolute; z-index: -1; right: -40px; top: -60px; width: 220px; height: 220px; border-radius: 50%;
-  background: radial-gradient(circle, rgba(255,255,255,.35), transparent 65%);
-  animation: glow-drift 9s ease-in-out infinite alternate;
-}
-@keyframes glow-drift { to { transform: translate(-40px, 30px) scale(1.15); } }
-.banner__body { display: flex; flex-direction: column; gap: 3px; padding: 16px 18px; max-width: 85%; }
-.banner__title { font-family: var(--font-display); font-size: 21px; line-height: 25px; font-weight: 700; letter-spacing: .3px; text-shadow: 0 1px 8px rgba(0,0,0,.15); }
-.banner__subtitle { font-size: 14px; line-height: 18px; opacity: .92; }
-.banner__cta {
-  align-self: flex-start; margin-top: 8px; height: 30px; padding: 0 14px; border-radius: 15px;
-  display: inline-flex; align-items: center; font-size: 14px; font-weight: 600;
-  background: rgba(255,255,255,.22); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
-}
+a.banner:active { transform: scale(.98); }
+.banner__img { width: 100%; height: 100%; object-fit: cover; -webkit-user-drag: none; }
+.banner__empty { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: var(--label-3); font-size: 13px; }
+.banner__empty svg { width: 32px; height: 32px; }
 .banner-dots { display: flex; justify-content: center; gap: 6px; padding: 10px 0 0; }
 .banner-dots span { width: 6px; height: 6px; border-radius: 3px; background: var(--label-3); transition: width .3s var(--spring), background-color .3s; }
 .banner-dots span.is-active { width: 18px; background: var(--tint); }
-@media (min-width: 720px) { .banner { height: 180px; } .banner__title { font-size: 26px; line-height: 30px; } }
 
 /* ==========================================================================
    Plans + payment
@@ -888,6 +860,9 @@ a.notice:active { opacity: .7; }
 @media (min-width: 720px) { .banner-admin { grid-template-columns: 1fr 1fr; } }
 .banner-admin__item { padding: 10px; }
 .banner--preview { flex: none; width: 100%; margin: 0; }
+.banner-admin__link { display: flex; align-items: center; gap: 6px; padding: 10px 2px 0; font-size: 13px; color: var(--label-2); min-width: 0; }
+.banner-admin__link svg { width: 14px; height: 14px; flex-shrink: 0; }
+.banner-admin__link span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .banner-admin__bar { display: flex; align-items: center; gap: 6px; padding: 10px 2px 0; }
 .banner-admin__bar .pill { margin: 0; }
 .banner-admin__bar .round-btn[disabled] { opacity: .3; }

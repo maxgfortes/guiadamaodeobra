@@ -5,9 +5,6 @@
  * (Firebase console → Project settings → Your apps → Web app).
  * These values are NOT secrets: access is enforced by the security rules
  * in /firestore.rules and /storage.rules.
- *
- * If the values are replaced by 'YOUR_…' placeholders the app runs in
- * DEMO MODE: browsing uses bundled sample professionals, signup is disabled.
  */
 export const firebaseConfig = {
   apiKey: 'AIzaSyDYSd0ZoBVtXuw5bR_Ps6LkGZa3qGhInCk',
@@ -21,8 +18,6 @@ export const firebaseConfig = {
 
 /** App-level switches. */
 export const appConfig = {
-  /** Mix bundled sample professionals into results (handy for a fresh project). */
-  showDemoProfessionals: true,
   /** Firebase JS SDK version loaded from the gstatic CDN. */
   sdkVersion: '10.12.2',
   /** Region of the Cloud Functions (must match functions/src/config.js). */
@@ -62,4 +57,3 @@ if (useEmulators) {
   });
 }
 
-export const isFirebaseConfigured = !String(firebaseConfig.apiKey).startsWith('YOUR_');

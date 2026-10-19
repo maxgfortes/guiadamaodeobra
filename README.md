@@ -14,7 +14,7 @@ Built with plain **HTML, CSS and vanilla JavaScript (ES modules)** on **Firebase
 
 | Area | What it does |
 | --- | --- |
-| **Home** | Rotating banner carousel served from Firestore (admins edit it), search shortcut, category grid, most-searched niches, newest professionals |
+| **Home** | Rotating image banners served from Firestore (each opens its link in a new tab; managed in the admin), search shortcut, category grid, most-searched niches, newest professionals |
 | **Explore** | Tree navigation: **Category → Group → Specification → Professionals** |
 | **Professionals list** | Paid and visible professionals in a niche, a city filter, a one-tap WhatsApp button |
 | **Profile** | Banner, avatar, name, specialty, location, WhatsApp / call / e-mail buttons, bio, services, portfolio with a full-screen viewer, share |
@@ -22,10 +22,11 @@ Built with plain **HTML, CSS and vanilla JavaScript (ES modules)** on **Firebase
 | **Signup (`signup.html`)** | Google sign-in → profile form → **plan + card payment** → profile live |
 | **Plans** | 1, 3, 6 or 12 months, prepaid. Renewing adds the new period to the time left |
 | **Profile tab** | Plan status, expiry date, renew shortcut, edit profile, install the app |
-| **Admin (`admin.html`)** | Overview (counts, revenue), professionals (search, filter, +30 days / +1 year, deactivate, delete user), payments, banners (create, edit, reorder, image upload), admins (grant or revoke) |
+| **Admin (`admin.html`)** | Overview (counts, revenue), professionals (search, filter, +30 days / +1 year, deactivate, delete user), payments, banners (image upload or URL + link, reorder, on/off), admins (grant or revoke) |
 | **E-mails** | Payment approved, payment failed (with the card's rejection reason), renewal reminder 3 days before expiry, plan expired |
-| **PWA** | Installable (manifest, maskable icon, shortcuts), service worker with offline shell, update prompt, `viewport-fit=cover` + safe areas, no rubber-band scrolling |
-| **Motion** | iOS push/pop transitions (View Transitions API, CSS fallback), staggered list entrances, image fade-in, spring sheets, tab icon bounce. Respects `prefers-reduced-motion` |
+| **PWA** | Installable (manifest, maskable icon, shortcuts), service worker with offline shell, update prompt, `viewport-fit=cover` + safe areas, native bounce scrolling |
+| **Navigation** | Screens stay alive like native tabs: switching tabs or going back re-attaches the screen without reloading, keeping its scroll position. Each tab remembers its last screen; tapping the active tab pops to its root |
+| **Motion** | iOS push/pop transitions (View Transitions API, CSS fallback), staggered list entrances, image fade-in, spring sheets, tab icon bounce |
 
 ## How payments work
 
@@ -67,7 +68,7 @@ public/                    # Firebase Hosting root (static, no build step)
     ├── admin.js           # Admin console
     ├── firebase-config.js # Firebase web config + Mercado Pago PUBLIC key
     ├── core/              # router, utils, pwa (SW + install)
-    ├── data/              # categories (taxonomy), plans (display), demo data
+    ├── data/              # categories (taxonomy), plans (display)
     ├── services/          # firebase (lazy SDK + callables), professionals, auth,
     │                      # images, banners, payments (Brick + createPayment)
     ├── ui/                # icons, components, toast, sheet, action sheet,
@@ -98,7 +99,7 @@ A profile is publicly visible only when `published == true` (the professional's 
 
 **`payments/{mpPaymentId}`**: `uid`, `planId`, `amount`, `installments`, `status`, `statusDetail`, `applied`, `createdAt`, `approvedAt`. Written only by Functions. Readable by the payer and by admins.
 
-**`banners/{id}`**: `title`, `subtitle`, `cta`, `link` (`#/…` or `https://…`), `color`, `imageURL`, `active`, `order`. Anyone can read them; only admins can write.
+**`banners/{id}`**: `imageURL` (required), `link` (`https://…`, opened in a new tab), `alt`, `active`, `order`. Anyone can read them; only admins can write.
 
 ### Security
 
@@ -151,14 +152,14 @@ cd functions && npm install && cd ..
 npm run deploy          # hosting + rules + indexes + functions
 ```
 
-Then open `https://guiadamaodeobra.web.app/admin.html` with an account listed in `ADMIN_EMAILS`. The first visit grants the admin claim automatically.
+Step-by-step checklist in Portuguese: [`PRODUCAO.md`](PRODUCAO.md).
 
-Once real professionals have signed up, set `appConfig.showDemoProfessionals = false` to hide the sample data and default banners.
+Then open `https://guiadamaodeobra.web.app/admin.html` with an account listed in `ADMIN_EMAILS`. The first visit grants the admin claim automatically.
 
 ## Development and tests
 
 ```bash
-npm run dev                                   # static server, http://localhost:5173 (no SW on localhost)
+npm run dev                                   # static server against the real Firebase project (no SW on localhost)
 npm run emulators                             # Auth, Firestore, Storage, Functions, Hosting (needs Java)
 # open http://localhost:5000/?emulators       → the app talks to the emulators
 cd functions && npm test                      # unit tests (plans, signature, references)
@@ -184,6 +185,7 @@ For emulator runs, Functions read `functions/.env.local` and `functions/.secret.
 - **Typography and colors:** the SF Pro stack and iOS system colors, with separate light and dark values, through CSS custom properties.
 - **Components:** grouped tables, Settings-style icon tiles, translucent bars, slide-up sheet, iOS action sheet, segmented control, switch, progress overlay.
 - **Motion:** only `transform` and `opacity` are animated. Push transitions use View Transitions with the bars pinned in place.
+- **Production only:** no sample data ships with the app. Lists start empty until professionals sign up and pay.
 - **Performance:** no framework and no build step. The Firebase and Mercado Pago SDKs load only when needed. Images are compressed on the device and lazy-loaded. Static assets use stale-while-revalidate.
 
 ## Known limitations / next steps

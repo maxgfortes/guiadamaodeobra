@@ -12,6 +12,7 @@ const routes = [];
 let onChange = () => {};
 let renderToken = 0;
 const historyStack = [];
+let forcedTransition = null;
 
 export function route(pattern, view, meta = {}) {
   const keys = [];
@@ -30,8 +31,14 @@ export function currentQuery() {
   return new URLSearchParams(q);
 }
 
-export function navigate(path, { replace = false } = {}) {
+/**
+ * @param {string} path
+ * @param {{ replace?: boolean, transition?: 'tab' | 'back' | 'forward' }} [opts]
+ *   `transition: 'tab'` is used by the tab bar to jump to a tab's last screen.
+ */
+export function navigate(path, { replace = false, transition = null } = {}) {
   const target = `#${path}`;
+  forcedTransition = transition;
   if (replace) {
     history.replaceState(null, '', target);
     if (historyStack.length) historyStack.pop();
@@ -45,7 +52,7 @@ export function navigate(path, { replace = false } = {}) {
 
 export function back(fallback = '/') {
   if (historyStack.length > 1) history.back();
-  else navigate(fallback, { replace: true });
+  else navigate(fallback, { replace: true, transition: 'back' });
 }
 
 function match(path) {
@@ -65,16 +72,22 @@ async function resolve() {
   const found = match(path) || match('/404');
   const token = ++renderToken;
 
+  const forced = forcedTransition;
+  forcedTransition = null;
+
   // Direction: going back if the path is the previous entry in our stack.
   let direction = 'forward';
-  if (historyStack.length > 1 && historyStack[historyStack.length - 2] === path) {
+  if (forced === 'tab') {
+    historyStack.length = 0; // switching tabs starts a fresh stack
+    historyStack.push(path);
+  } else if (historyStack.length > 1 && historyStack[historyStack.length - 2] === path) {
     historyStack.pop();
     direction = 'back';
   } else if (historyStack[historyStack.length - 1] !== path) {
     if (found?.meta.tab) historyStack.length = 0; // tabs reset the stack
     historyStack.push(path);
   }
-  const transition = found?.meta.tab ? 'tab' : direction;
+  const transition = forced || (found?.meta.tab ? 'tab' : direction);
 
   await onChange({ found, path, transition, isStale: () => token !== renderToken });
 }
